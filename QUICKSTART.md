@@ -81,6 +81,11 @@ python tester/tester.py all --devices 10000 --interval 1 --duration 30
 - Every FAIL line prints why (e.g. `unacked=1200`, `p99=3500 ms`,
   `fix_time 2026-07-14 16:00:00 != 2026-07-14 10:30:00`). Fix, restart your
   server, rerun.
+- Linux/macOS: the default open-file limit (`ulimit -n`, often 1024) is far
+  below 10,000 sockets. The tester raises its own limit automatically, but
+  **your server needs the same headroom** — run it with `ulimit -n 65535`
+  in that shell (or the equivalent for your runtime) before the big load
+  and ramp runs.
 - Each run generates fresh random devices — you never need to clean the
   database between runs.
 - Server and MySQL on other machines? Add

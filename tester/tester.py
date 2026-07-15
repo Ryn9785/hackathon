@@ -237,7 +237,9 @@ def db_wait_rows(args, expected: int, timeout: float, imeis):
         if cnt >= expected:
             conn.close()
             return cnt, now - t0
-        if now - t0 > timeout or (cnt == last and now - last_change > 12):
+        # stall cutoff must exceed the 30 s visibility SLA: a server that
+        # flushes on e.g. a 20 s timer is fully compliant
+        if now - t0 > timeout or (cnt == last and now - last_change > 35):
             conn.close()
             return cnt, now - t0
         time.sleep(1.0)
@@ -1360,6 +1362,13 @@ async def amain(args):
 
 
 def main():
+    if hasattr(os, "getuid"):
+        # POSIX: default open-file limit (often 1024) is far below the
+        # 10k+ client sockets the load modes need; raise it up front so
+        # connect failures reflect the server under test, not the tester.
+        import resource
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (min(hard, 1 << 16), hard))
     args = build_parser().parse_args()
     if args.seed is None:
         args.seed = random.SystemRandom().randint(1, 10 ** 9)
